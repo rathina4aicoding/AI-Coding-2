@@ -1,0 +1,94 @@
+Chunk Size
+==========
+Definition: The maximum number of tokens (words or sub-word units) that make up a single text chunk. 
+Purpose: To break down large documents into smaller, manageable pieces that can be efficiently indexed and retrieved. 
+Impact:
+Larger chunks: result in fewer chunks overall, which can reduce indexing and storage costs, but might miss important details if the relevant information is only within a small part of the larger chunk. 
+Smaller chunks: create more, smaller pieces of text, allowing for more precise retrieval of information but can lead to increased noise and a higher number of chunks to manage. 
+
+
+Chunk Overlap
+============
+Definition: The number of tokens that are repeated between the end of one chunk and the beginning of the next. 
+Purpose: To preserve the context and flow of information across chunk boundaries, preventing sentences or ideas from being abruptly cut off. 
+Impact:
+Increases context: by ensuring that the surrounding information for any point in the text is available in the chunk, even if it was split by the chunk boundary. 
+Improves coherence: by helping the LLM understand the relationship between adjacent pieces of text. 
+Considerations: The overlap should be less than the chunk size, as a complete overlap defeats the purpose of chunking. 
+
+Why Chunking is Important for RAG?
+==================================
+1. Contextual Understanding: Chunking breaks down lengthy documents into smaller, focused contexts that the RAG model can process and understand effectively. 
+2. Efficient Retrieval: Smaller, well-defined chunks are easier for the retrieval system to find and match to a user's query, leading to more relevant results. 
+3. LLM Context Window: Chunking ensures that the retrieved chunks can fit within the language model's context window (its capacity to process text at one time). 
+
+Retrievar Pool Size
+===================
+The "retriever pool size" is the maximum number of initial document chunks (or passages) that the retriever module pulls from a vector database or other knowledge source. 
+
+Rerank Top k
+================
+rerank_top_k is the parameter that specifies how many of the top documents from the initial retrieval pool will be sent to the LLM for generating the final answer.
+
+torch.cuda
+============
+In the context of Large Language Models (LLMs) and PyTorch, torch.cuda and specifying device = "cuda" are fundamental for leveraging the computational power of NVIDIA GPUs.
+torch.cuda:
+torch.cuda is a PyTorch module that provides an interface for interacting with NVIDIA GPUs using CUDA (Compute Unified Device Architecture). 
+CUDA is a parallel computing platform and API developed by NVIDIA, enabling the use of GPUs for general-purpose processing. 
+
+This module allows you to manage GPU devices, allocate tensors on the GPU, perform operations on those tensors, and query information about the available GPUs.
+Key functionalities within torch.cuda include:
+torch.cuda.is_available(): Checks if CUDA-enabled GPUs are present and accessible.
+torch.cuda.device_count(): Returns the number of available CUDA devices. 
+torch.cuda.get_device_name(device_id): Retrieves the name of a specific GPU.
+torch.cuda.set_device(device_id): Sets the current default GPU for operations (though using to(device) is generally preferred).
+
+RunnableMap (or RunnableParallel):
+==================================
+In the context of LangChain's Expression Language (LCEL), RunnableMap and RunnablePassthrough are key components for building complex LLM chains.
+
+Purpose: RunnableMap (often implemented as RunnableParallel or a dictionary literal in LCEL) allows you to execute multiple runnables concurrently, providing the same input to each.
+Functionality: It takes a dictionary where keys are output keys and values are runnables (or things that can be coerced into runnables, like functions). 
+It executes all these runnables in parallel using the same input and returns a dictionary containing the results of each runnable under their respective keys.
+
+Use Case: This is particularly useful for scenarios where you need to perform multiple operations on the same input simultaneously, such as:
+Generating different types of responses (e.g., summary and quiz questions) from the same input text.
+Preparing multiple inputs for a subsequent runnable that expects a structured input.
+
+RunnablePassthrough:
+======================
+Purpose: RunnablePassthrough is a simple runnable that passes its input through unchanged. It acts as an identity function for runnables.
+Functionality: When invoke() is called on a RunnablePassthrough, it returns the input it received without any modification.
+
+Use Case: RunnablePassthrough is often used in conjunction with RunnableMap or RunnableParallel to: 
+Preserve original input: When you need to pass the original input alongside the results of other processing steps to a later stage in the chain.
+Add additional keys: If the input is an object (e.g., a dictionary), you can use RunnablePassthrough to pass the original object while also defining other keys in a RunnableMap that might process or derive new information from that input.
+
+
+Reranker - CrossEncoders
+====================
+A CrossEncoder is a type of neural network model, often based on transformer architectures like BERT, that is specifically designed for tasks requiring a deep understanding of the relationship between two input texts. In the context of a Retrieval-Augmented Generation (RAG) system, CrossEncoders are primarily used as rerankers.
+
+CrossEncoder Scoring in a RAG Reranker Model:
+-------------------------------------------
+Joint Processing: Unlike bi-encoders that encode query and document independently, a CrossEncoder takes the query and a candidate document as a single, concatenated input sequence. 
+This allows the model to perform attention mechanisms across the entire combined input, enabling a rich, fine-grained interaction between the tokens of the query and the document.
+
+Relevance Score Generation: The CrossEncoder then processes this combined input and outputs a single score, typically a probability or a relevance score between 0 and 1. 
+This score indicates the predicted relevance of the document to the given query. A higher score signifies a stronger semantic match and greater likelihood of the document containing the answer to the query.
+
+Reranking: In a RAG pipeline, a two-stage retrieval process is common:
+1. Initial Retrieval: A faster, less computationally intensive retriever (e.g., a bi-encoder or a sparse retrieval method like BM25) retrieves an initial set of k candidate documents from a large corpus.
+2. Reranking with CrossEncoder: The CrossEncoder then takes each of these k retrieved documents and the original query, computes a relevance score for each (query, document) pair, and reorders 
+   the documents based on these scores. This refined list of documents, with the most relevant ones at the top, is then passed to the Language Model for answer generation.
+
+Advantages of CrossEncoder Reranking:
+============================
+Higher Accuracy: By jointly processing the query and document, CrossEncoders capture more nuanced semantic relationships and context, leading to more accurate relevance assessments compared to methods 
+                 that rely solely on embedding similarity.
+Improved RAG Performance: The refined ranking ensures that the Language Model receives the most relevant information, reducing the chances of generating inaccurate or irrelevant answers (hallucinations) 
+                          and improving the overall quality of the generated response.
+                          
+Considerations:
+Computational Cost: CrossEncoders are more computationally intensive than bi-encoders because they require a separate forward pass for each (query, document) pair. This makes them less suitable for the initial retrieval from very large corpora but highly effective for reranking a smaller set of candidates.
